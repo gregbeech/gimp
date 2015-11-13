@@ -37,6 +37,10 @@ module Gimp
         opts.on('-u', '--unassign', 'Do not copy the existing assignee') do
           @options.unassign = true
         end
+        opts.on('--add-labels LABELS', Array, 'Add labels') do |labels|
+          @options.labels ||= Hashie::Mash.new
+          @options.labels.add = labels
+        end
         opts.on('--exclude-labels [LABELS]', Array, 'Exclude labels', ' (exclude specific labels if LABELS supplied)') do |labels|
           @options.labels ||= Hashie::Mash.new
           @options.labels.exclude = labels || true

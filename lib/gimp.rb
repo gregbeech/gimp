@@ -8,19 +8,18 @@ module Gimp
       @options = options
       @source = options.source
       @destination = options.destination
-      @exclude_labels = options.labels.exclude if options.labels? && options.labels.exclude?
       @known_labels = Set.new
     end
 
     def move_issue(id)
       issue = @client.issue(@source, id)
-      labels = filter_labels(@client.labels_for_issue(@source, id))
+      labels = new_labels(@client.labels_for_issue(@source, id))
       comments = @client.issue_comments(@source, id)
 
       labels.each { |label| ensure_label(label) }
       new_issue = @client.create_issue(@destination, issue.title, issue.body,
         assignee: new_assignee(issue),
-        labels: labels.map(&:name))
+        labels: labels.map(&:name).uniq)
       @client.add_comment(@destination, new_issue.number, "*Issue migrated from #{@source}##{issue.number}*")
       comments.each { |comment| @client.add_comment(@destination, new_issue.number, comment_text(comment)) }
 
@@ -30,10 +29,17 @@ module Gimp
 
     private
 
-    def filter_labels(labels)
-      return labels unless @exclude_labels
-      return [] if @exclude_labels == true
-      labels.reject { |label| @exclude_labels.include?(label.name) }
+    def new_labels(labels)
+      opts = @options.labels
+      return labels unless opts
+
+      labels = case opts.exclude
+               when nil then labels
+               when true then []
+               else labels.reject { |label| opts.exclude.include?(label.name) }
+               end
+      labels << opts.add.map { |name| Hashie::Mash.new(name: name, color: 'ffffff') } if opts.add?
+      labels.flatten
     end
 
     def ensure_label(label)
