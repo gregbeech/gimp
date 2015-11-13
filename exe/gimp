@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'gimp'
+
+options = {}
+OptionParser.new do |opts|
+  opts.banner = 'Usage: gimp [options]'
+
+  opts.on('-s', '--source SOURCE', 'Source repository') do |source|
+    options[:source] = source
+  end
+  opts.on('-d', '--destination DESTINATION', 'Destination repository') do |destination|
+    options[:destination] = destination
+  end
+  opts.on('-i', '--issues ISSUES', Array, 'Issue numbers') do |issues|
+    options[:issues] = issues
+  end
+  opts.on('-t', '--access-token ACCESS_TOKEN', 'GitHub access token') do |access_token|
+    options[:access_token] = access_token
+  end
+  opts.on('--exclude-labels [LABELS]', Array, 'Exclude labels', ' (exclude specific labels if LABELS supplied)') do |labels|
+    options[:exclude_labels] = labels
+  end
+  opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
+    options[:verbose] = v
+  end
+  opts.on_tail("-h", "--help", "Show this message") do
+    puts opts
+    exit
+  end
+end.parse!
+
+mover = Gimp::Mover.new(options)
+options[:issues].each do |id|
+  new_id = mover.move_issue(id)
+  puts "#{options[:source]}##{id} -> #{options[:destination]}##{new_id}"
+end
