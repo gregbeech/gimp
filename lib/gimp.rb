@@ -4,22 +4,22 @@ require "gimp/version"
 module Gimp
   class Mover
     def initialize(options)
-      @client = Octokit::Client.new(access_token: options[:access_token])
-      @source = options[:source]
-      @destination = options[:destination]
-      @exclude_labels = options[:exclude_labels] || []
+      @client = Octokit::Client.new(access_token: options.token)
+      @source = options.source
+      @destination = options.destination
+      @exclude_labels = options.labels.exclude if options.labels? && options.labels.exclude?
       @known_labels = Set.new
     end
 
     def move_issue(id)
       issue = @client.issue(@source, id)
-      labels = @client.labels_for_issue(@source, id)
+      labels = filter_labels(@client.labels_for_issue(@source, id))
       comments = @client.issue_comments(@source, id)
 
       labels.each { |label| ensure_label(label) }
       new_issue = @client.create_issue(@destination, issue.title, issue.body,
         assignee: issue.assignee ? issue.assignee.login : nil,
-        labels: labels.map(&:name) - @exclude_labels)
+        labels: labels.map(&:name))
       @client.add_comment(@destination, new_issue.number, "*Issue migrated from #{@source}##{issue.number}*")
       comments.each { |comment| @client.add_comment(@destination, new_issue.number, comment_text(comment)) }
 
@@ -29,8 +29,14 @@ module Gimp
 
     private
 
+    def filter_labels(labels)
+      return labels unless @exclude_labels
+      return [] if @exclude_labels == true
+      labels.reject { |label| @exclude_labels.include?(label.name) }
+    end
+
     def ensure_label(label)
-      return if @exclude_labels.include?(label.name) || @known_labels.include?(label.name)
+      return if @known_labels.include?(label.name)
       @client.label(@destination, label.name)
       @known_labels << label.name
     rescue Octokit::NotFound
