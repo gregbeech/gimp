@@ -5,6 +5,7 @@ module Gimp
   class Mover
     def initialize(options)
       @client = Octokit::Client.new(access_token: options.token)
+      @options = options
       @source = options.source
       @destination = options.destination
       @exclude_labels = options.labels.exclude if options.labels? && options.labels.exclude?
@@ -18,7 +19,7 @@ module Gimp
 
       labels.each { |label| ensure_label(label) }
       new_issue = @client.create_issue(@destination, issue.title, issue.body,
-        assignee: issue.assignee ? issue.assignee.login : nil,
+        assignee: new_assignee(issue),
         labels: labels.map(&:name))
       @client.add_comment(@destination, new_issue.number, "*Issue migrated from #{@source}##{issue.number}*")
       comments.each { |comment| @client.add_comment(@destination, new_issue.number, comment_text(comment)) }
@@ -42,6 +43,11 @@ module Gimp
     rescue Octokit::NotFound
       @client.add_label(@destination, label.name, label.color)
       @known_labels << label.name
+    end
+
+    def new_assignee(issue)
+      return nil if @options.unassign? || issue.assignee.nil?
+      issue.assignee.login if @client.collaborator?(@destination, issue.assignee.login)
     end
 
     def comment_text(comment)

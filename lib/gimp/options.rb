@@ -34,6 +34,9 @@ module Gimp
         opts.on('-i', '--issues ISSUES', Array, 'Issue numbers') do |issues|
           @options.issues = issues
         end
+        opts.on('-u', '--unassign', 'Do not copy the existing assignee') do
+          @options.unassign = true
+        end
         opts.on('--exclude-labels [LABELS]', Array, 'Exclude labels', ' (exclude specific labels if LABELS supplied)') do |labels|
           @options.labels ||= Hashie::Mash.new
           @options.labels.exclude = labels || true
